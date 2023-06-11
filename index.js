@@ -31,6 +31,7 @@ async function run() {
     );
 
     const usersCollection = client.db("sportingLife").collection("users");
+    const classesCollection = client.db("sportingLife").collection("classes");
 
     // users related apis
     app.post("/users", async (req, res) => {
@@ -42,6 +43,35 @@ async function run() {
         return res.send({ message: "user already exists" });
       }
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // instructors related apis
+    app.get("/instructors", async (req, res) => {
+      const limit = req.query.limit;
+      const query = { role: "instructor" };
+      if (limit) {
+        const result = await usersCollection.find(query).limit(6).toArray();
+        res.send(result);
+        return;
+      }
+      const result = await usersCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // classes related apis
+    app.get("/classes", async (req, res) => {
+      const topClasses = req.query.top;
+      if (topClasses) {
+        const result = await classesCollection
+          .find()
+          .sort({ numerOfStudents: -1 })
+          .limit(6)
+          .toArray();
+        res.send(result);
+        return;
+      }
+      const result = await classesCollection.find().toArray();
       res.send(result);
     });
   } finally {
