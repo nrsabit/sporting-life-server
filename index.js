@@ -62,6 +62,34 @@ async function run() {
       res.send({ token });
     });
 
+    // admin verification 
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.role === "admin" ? true : false;
+      if (!isAdmin) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidded access" });
+      }
+      next();
+    };
+
+    // instructor verificaion 
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const isInstructor = user?.role === "instructor" ? true : false;
+      if (!isInstructor) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidded access" });
+      }
+      next();
+    };
+
     // users related apis
     app.post("/users", async (req, res) => {
       const user = req.body;
