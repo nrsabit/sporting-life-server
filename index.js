@@ -32,6 +32,7 @@ async function run() {
 
     const usersCollection = client.db("sportingLife").collection("users");
     const classesCollection = client.db("sportingLife").collection("classes");
+    const selectedCollection = client.db("sportingLife").collection("selected");
 
     // users related apis
     app.post("/users", async (req, res) => {
@@ -65,13 +66,20 @@ async function run() {
       if (topClasses) {
         const result = await classesCollection
           .find()
-          .sort({ numerOfStudents: -1 })
+          .sort({ numberOfStudents: -1 })
           .limit(6)
           .toArray();
+        console.log(result);
         res.send(result);
         return;
       }
       const result = await classesCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/select-class", async (req, res) => {
+      const selectedClass = req.body;
+      const result = await selectedCollection.insertOne(selectedClass);
       res.send(result);
     });
   } finally {
