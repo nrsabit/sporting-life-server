@@ -34,7 +34,7 @@ async function run() {
     const classesCollection = client.db("sportingLife").collection("classes");
     const selectedCollection = client.db("sportingLife").collection("selected");
 
-    // jwt related apis 
+    // jwt related apis
     const verifyJWT = (req, res, next) => {
       const authorization = req.headers.authorization;
       if (!authorization) {
@@ -57,12 +57,12 @@ async function run() {
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.JWT_SECRET, {
-        expiresIn: "1hr",
+        expiresIn: "7d",
       });
       res.send({ token });
     });
 
-    // admin verification 
+    // admin verification
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
@@ -76,7 +76,7 @@ async function run() {
       next();
     };
 
-    // instructor verificaion 
+    // instructor verificaion
     const verifyInstructor = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
@@ -103,6 +103,18 @@ async function run() {
       res.send(result);
     });
 
+    // admin related apis
+    app.get("/user/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+        return;
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      res.send({ admin: user?.role === "admin" });
+    });
+
     // instructors related apis
     app.get("/instructors", async (req, res) => {
       const limit = req.query.limit;
@@ -114,6 +126,17 @@ async function run() {
       }
       const result = await usersCollection.find(query).toArray();
       res.send(result);
+    });
+
+    app.get("/user/instructor/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ instructor: false });
+        return;
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      res.send({ instructor: user?.role === "instructor" });
     });
 
     // classes related apis
@@ -137,6 +160,25 @@ async function run() {
       const selectedClass = req.body;
       const result = await selectedCollection.insertOne(selectedClass);
       res.send(result);
+    });
+
+    // selected classes related apis
+    app.get("/selected", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+      if (!email) {
+        res.send([]);
+        return
+      } else {
+        if (email !== decodedEmail) {
+          return res
+            .status(401)
+            .send({ error: true, message: "unauthorized access" });
+        }
+        const query = { email: email };
+        const result = await selectedCollection.find(query).toArray();
+        res.send(result);
+      }
     });
   } finally {
     // Ensures that the client will close when you finish/error
