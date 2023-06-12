@@ -34,6 +34,34 @@ async function run() {
     const classesCollection = client.db("sportingLife").collection("classes");
     const selectedCollection = client.db("sportingLife").collection("selected");
 
+    // jwt related apis 
+    const verifyJWT = (req, res, next) => {
+      const authorization = req.headers.authorization;
+      if (!authorization) {
+        return res
+          .status(401)
+          .send({ error: true, message: "unauthorized access" });
+      }
+      const token = authorization.split(" ")[1];
+      jwt.verify(token, process.env.JWT_SECRET_KEY, (eror, decoded) => {
+        if (eror) {
+          return res
+            .status(401)
+            .send({ error: true, message: "unauthorized access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_SECRET, {
+        expiresIn: "1hr",
+      });
+      res.send({ token });
+    });
+
     // users related apis
     app.post("/users", async (req, res) => {
       const user = req.body;
