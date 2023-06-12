@@ -169,6 +169,18 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/my-classes", verifyJWT, verifyInstructor, async (req, res) => {
+      const email = req.query.email;
+      if (req.decoded.email !== email) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access" });
+      }
+      const query = { instructorEmail: email };
+      const result = await classesCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // selected classes related apis
     app.get("/selected", verifyJWT, async (req, res) => {
       const email = req.query.email;
