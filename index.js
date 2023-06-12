@@ -2,8 +2,9 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 // middlewares
 app.use(cors());
@@ -56,7 +57,7 @@ async function run() {
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.JWT_SECRET, {
+      const token = jwt.sign(user, process.env.JWT_SECRET_KEY, {
         expiresIn: "7d",
       });
       res.send({ token });
@@ -142,17 +143,17 @@ async function run() {
     // classes related apis
     app.get("/classes", async (req, res) => {
       const topClasses = req.query.top;
+      const query = { status: "approved" };
       if (topClasses) {
         const result = await classesCollection
-          .find()
+          .find(query)
           .sort({ numberOfStudents: -1 })
           .limit(6)
           .toArray();
-        console.log(result);
         res.send(result);
         return;
       }
-      const result = await classesCollection.find().toArray();
+      const result = await classesCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -162,13 +163,19 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
+      const newClass = req.body;
+      const result = await classesCollection.insertOne(newClass);
+      res.send(result);
+    });
+
     // selected classes related apis
     app.get("/selected", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const decodedEmail = req.decoded.email;
       if (!email) {
         res.send([]);
-        return
+        return;
       } else {
         if (email !== decodedEmail) {
           return res
@@ -179,6 +186,13 @@ async function run() {
         const result = await selectedCollection.find(query).toArray();
         res.send(result);
       }
+    });
+
+    app.delete("/selected/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await selectedCollection.deleteOne(query);
+      res.send(result);
     });
   } finally {
     // Ensures that the client will close when you finish/error
