@@ -3,6 +3,7 @@ const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -34,6 +35,8 @@ async function run() {
     const usersCollection = client.db("sportingLife").collection("users");
     const classesCollection = client.db("sportingLife").collection("classes");
     const selectedCollection = client.db("sportingLife").collection("selected");
+    const paymentsCollection = client.db("sportingLife").collection("payments");
+    const enrolledCollection = client.db("sportingLife").collection("enrolled");
 
     // jwt related apis
     const verifyJWT = (req, res, next) => {
@@ -200,12 +203,60 @@ async function run() {
       }
     });
 
+    app.get("/selected/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await selectedCollection.findOne(query);
+      res.send(result);
+    });
+
     app.delete("/selected/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await selectedCollection.deleteOne(query);
       res.send(result);
     });
+
+    // Payment Related apis (create payment intent)
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
+
+    app.post("/payment", verifyJWT, async (req, res) => {
+      const newPayment = req.body;
+      const result = await paymentsCollection.insertOne(newPayment);
+      res.send(result);
+    });
+
+    // add an enrolled class
+    app.post("/enrolled", async (req, res) => {
+      const enrolledClass = req.body;
+      const result = await enrolledCollection.insertOne(enrolledClass);
+      res.send(result);
+    });
+
+    // update class after enroll 
+    app.patch("/class/:id", async(req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const mainClass = await classesCollection.findOne(filter)
+      const updateDoc = {
+        $set: {
+          availableSeats : mainClass?.availableSeats - 1,
+          numberOfStudents : mainClass?.numberOfStudents + 1
+        },
+      };
+      const result = await classesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    })
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
