@@ -124,6 +124,19 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/update-user/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const role = req.query.role;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: role,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
     // admin related apis
     app.get("/user/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
