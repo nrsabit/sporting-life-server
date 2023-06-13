@@ -235,28 +235,39 @@ async function run() {
       res.send(result);
     });
 
-    // add an enrolled class
+    // enrolled class related apis
     app.post("/enrolled", async (req, res) => {
       const enrolledClass = req.body;
       const result = await enrolledCollection.insertOne(enrolledClass);
       res.send(result);
     });
 
-    // update class after enroll 
-    app.patch("/class/:id", async(req, res) => {
+    app.get("/enrolled", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      if (req.decoded.email !== email) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access" });
+      }
+      const query = { email: email };
+      const result = await enrolledCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // update class after enroll
+    app.patch("/class/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-      const mainClass = await classesCollection.findOne(filter)
+      const mainClass = await classesCollection.findOne(filter);
       const updateDoc = {
         $set: {
-          availableSeats : mainClass?.availableSeats - 1,
-          numberOfStudents : mainClass?.numberOfStudents + 1
+          availableSeats: mainClass?.availableSeats - 1,
+          numberOfStudents: mainClass?.numberOfStudents + 1,
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
       res.send(result);
-    })
-
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
