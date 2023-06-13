@@ -235,6 +235,18 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/payments", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      if (req.decoded.email !== email) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access" });
+      }
+      const query = { email: email };
+      const result = await paymentsCollection.find(query).sort({date : -1}).toArray();
+      res.send(result);
+    });
+
     // enrolled class related apis
     app.post("/enrolled", async (req, res) => {
       const enrolledClass = req.body;
