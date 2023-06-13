@@ -107,6 +107,23 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/user", async (req, res) => {
+      const email = req.query.email;
+      if (req.decoded.email !== email) {
+        return res
+          .status(401)
+          .send({ error: true, message: "unauthorized access" });
+      }
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+
     // admin related apis
     app.get("/user/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
@@ -157,6 +174,11 @@ async function run() {
         return;
       }
       const result = await classesCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/all-classes", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await classesCollection.find().toArray();
       res.send(result);
     });
 
@@ -243,7 +265,10 @@ async function run() {
           .send({ error: true, message: "forbidden access" });
       }
       const query = { email: email };
-      const result = await paymentsCollection.find(query).sort({date : -1}).toArray();
+      const result = await paymentsCollection
+        .find(query)
+        .sort({ date: -1 })
+        .toArray();
       res.send(result);
     });
 
@@ -266,7 +291,7 @@ async function run() {
       res.send(result);
     });
 
-    // update class after enroll
+    // update class
     app.patch("/class/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -275,6 +300,19 @@ async function run() {
         $set: {
           availableSeats: mainClass?.availableSeats - 1,
           numberOfStudents: mainClass?.numberOfStudents + 1,
+        },
+      };
+      const result = await classesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/update-class-status/:id", async (req, res) => {
+      const id = req.params.id;
+      const status = req.query.status;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: status,
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
