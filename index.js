@@ -318,6 +318,27 @@ async function run() {
       const result = await classesCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
+
+    app.patch(
+      "/update-feedback/:id",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const feedback = req.body.feedback;
+        if (!feedback) {
+          return;
+        }
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            feedback: feedback,
+          },
+        };
+        const result = await classesCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
