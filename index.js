@@ -11,6 +11,26 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 app.use(cors());
 app.use(express.json());
 
+// jwt verification
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res
+      .status(401)
+      .send({ error: true, message: "unauthorized access for no key" });
+  }
+  const token = authorization.split(" ")[1];
+  jwt.verify(token, process.env.JWT_SECRET_KEY, (eror, decoded) => {
+    if (eror) {
+      return res
+        .status(401)
+        .send({ error: true, message: "unauthorized access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.h7lvo9z.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -39,25 +59,6 @@ async function run() {
     const enrolledCollection = client.db("sportingLife").collection("enrolled");
 
     // jwt related apis
-    const verifyJWT = (req, res, next) => {
-      const authorization = req.headers.authorization;
-      if (!authorization) {
-        return res
-          .status(401)
-          .send({ error: true, message: "unauthorized access for no key" });
-      }
-      const token = authorization.split(" ")[1];
-      jwt.verify(token, process.env.JWT_SECRET_KEY, (eror, decoded) => {
-        if (eror) {
-          return res
-            .status(401)
-            .send({ error: true, message: "unauthorized access" });
-        }
-        req.decoded = decoded;
-        next();
-      });
-    };
-
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.JWT_SECRET_KEY, {
@@ -112,10 +113,12 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/user", async (req, res) => {
-      const email = req.query.email;
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email
+      console.log(email)
       const query = { email: email };
       const result = await usersCollection.findOne(query);
+      console.log(result)
       res.send(result);
     });
 
